@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _senhaCtrl = TextEditingController();
   bool _loading = false;
   bool _remember = false;
+  bool _obscureText = true;
   final _api = ApiService();
 
   @override
@@ -25,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    final remember   = prefs.getBool('remember_me') ?? false;
+    final remember = prefs.getBool('remember_me') ?? false;
     final savedEmail = prefs.getString('saved_email');
     final savedSenha = prefs.getString('saved_senha');
     if (remember && savedEmail != null && savedSenha != null) {
@@ -51,6 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
+    // Validate form
+    if (_emailCtrl.text.isEmpty || _senhaCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, preencha todos os campos')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await _api.login(_emailCtrl.text, _senhaCtrl.text);
@@ -63,8 +72,13 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     } finally {
       setState(() => _loading = false);
@@ -73,45 +87,140 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // --- LOGO PERSONALIZADA na tela de login ---
-              Image.asset(
-                'assets/ticketsyhnklogo.png',
-                width: 96,
-                height: 96,
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _senhaCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Senha'),
-              ),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                title: const Text('Lembrar senha'),
-                value: _remember,
-                controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (v) => setState(() => _remember = v!),
-              ),
-              const SizedBox(height: 24),
-              _loading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _login,
-                      child: const Text('Entrar'),
-                    ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.primary.withOpacity(0.8),
+              colorScheme.primary,
             ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Card(
+                elevation: 8,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Image.asset(
+                          'assets/ticketsyhnklogo.png',
+                          width: 80,
+                          height: 80,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // Title
+                      Text(
+                        'Ticket Sync',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Acesse para ver seus ingressos',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      // Email field
+                      TextField(
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.email, color: colorScheme.primary),
+                          hintText: 'seu.email@exemplo.com',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Password field
+                      TextField(
+                        controller: _senhaCtrl,
+                        obscureText: _obscureText,
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          prefixIcon: Icon(Icons.lock, color: colorScheme.primary),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureText ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () => setState(() => _obscureText = !_obscureText),
+                          ),
+                          hintText: '********',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Remember me checkbox
+                      CheckboxListTile(
+                        title: const Text('Lembrar meus dados'),
+                        value: _remember,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        activeColor: colorScheme.primary,
+                        onChanged: (v) => setState(() => _remember = v!),
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      // Login button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: _loading
+                            ? ElevatedButton(
+                                onPressed: null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const CircularProgressIndicator(color: Colors.white),
+                              )
+                            : ElevatedButton(
+                                onPressed: _login,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text(
+                                  'ENTRAR',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
