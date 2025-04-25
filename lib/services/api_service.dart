@@ -173,4 +173,127 @@ class ApiService {
     }
     throw Exception('Erro ao verificar status do ingresso.');
   }
+  
+  /// Busca dados do perfil do usuário
+  Future<Map<String, dynamic>> getUserProfile() async {
+    if (!await _hasConnection()) {
+      throw Exception('Sem conexão com a Internet.');
+    }
+    
+    final token = await _getToken();
+    if (token == null) throw Exception("Token não encontrado.");
+
+    final uri = Uri.parse("$_baseUrl/api/get_profile.php");
+    final res = await http.get(uri, headers: {"Authorization": token});
+
+    if (res.statusCode == 200) {
+      final body = res.body.trim();
+      if (body.isEmpty) {
+        throw Exception('Resposta vazia do servidor.');
+      }
+      try {
+        return jsonDecode(body) as Map<String, dynamic>;
+      } catch (e) {
+        throw Exception('Falha ao decodificar perfil: ${e.toString()}');
+      }
+    }
+
+    if (res.statusCode >= 500) {
+      throw Exception('Erro no servidor. Tente novamente mais tarde.');
+    }
+    
+    final err = (res.body.isNotEmpty
+      ? jsonDecode(res.body)['error'] ?? 'Erro ao buscar perfil'
+      : 'Erro ${res.statusCode}');
+    throw Exception(err);
+  }
+
+  /// Atualiza dados do perfil do usuário
+  Future<void> updateUserProfile(Map<String, dynamic> userData) async {
+    if (!await _hasConnection()) {
+      throw Exception('Sem conexão com a Internet.');
+    }
+    
+    final token = await _getToken();
+    if (token == null) throw Exception("Token não encontrado.");
+
+    final uri = Uri.parse("$_baseUrl/api/update_profile.php");
+    final res = await http.post(
+      uri, 
+      headers: {
+        "Authorization": token,
+        "Content-Type": "application/json"
+      },
+      body: jsonEncode(userData),
+    );
+
+    if (res.statusCode == 200) {
+      // Atualiza SharedPreferences se o nome ou email mudou
+      if (userData.containsKey('nome') || userData.containsKey('email')) {
+        final prefs = await SharedPreferences.getInstance();
+        if (userData.containsKey('nome')) {
+          await prefs.setString('nome', userData['nome']);
+        }
+        if (userData.containsKey('email')) {
+          await prefs.setString('email', userData['email']);
+        }
+      }
+      return;
+    }
+
+    if (res.statusCode >= 500) {
+      throw Exception('Erro no servidor. Tente novamente mais tarde.');
+    }
+    
+    final err = (res.body.isNotEmpty
+      ? jsonDecode(res.body)['error'] ?? 'Erro ao atualizar perfil'
+      : 'Erro ${res.statusCode}');
+    throw Exception(err);
+  }
+  
+  /// Upload de foto de perfil
+  Future<String> uploadProfilePhoto(List<int> photoBytes, String fileName) async {
+    if (!await _hasConnection()) {
+      throw Exception('Sem conexão com a Internet.');
+    }
+    
+    final token = await _getToken();
+    if (token == null) throw Exception("Token não encontrado.");
+
+    final uri = Uri.parse("$_baseUrl/api/upload_profile_photo.php");
+    
+    // Criar um request multipart
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = token;
+    
+    // Adicionar o arquivo
+    request.files.add(http.MultipartFile.fromBytes(
+      'photo',
+      photoBytes,
+      filename: fileName
+    ));
+    
+    // Enviar e aguardar a resposta
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        // Retorna a URL da foto upload
+        final decoded = jsonDecode(response.body);
+        return decoded['photo_url'] as String;
+      }
+      
+      if (response.statusCode >= 500) {
+        throw Exception('Erro no servidor. Tente novamente mais tarde.');
+      }
+      
+      final err = (response.body.isNotEmpty
+        ? jsonDecode(response.body)['error'] ?? 'Erro ao enviar foto'
+        : 'Erro ${response.statusCode}');
+      throw Exception(err);
+    } catch (e) {
+      throw Exception('Falha ao enviar foto: ${e.toString()}');
+    }
+  }
 }

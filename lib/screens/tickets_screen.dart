@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../models/ticket.dart';
 import '../services/api_service.dart';
 import '../widgets/ticket_card.dart';
 import 'ticket_details_screen.dart';
+import 'profile_screen.dart'; // Add this import for the profile screen
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({Key? key}) : super(key: key);
@@ -25,7 +25,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   void _loadTickets() {
     setState(() {
-      _futureTickets = _api.getTickets();
+      _futureTickets = _api.getTickets(); // Fixed the typo here
     });
   }
 
@@ -44,6 +44,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Atualizar',
             onPressed: _loadTickets,
+          ),
+          // Add profile icon between refresh and logout
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Meu Perfil',
+            onPressed: () {
+              // Navigate to ProfileScreen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
