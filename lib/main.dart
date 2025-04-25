@@ -5,16 +5,16 @@ import 'screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
-  runApp(const TicketSyncApp());
+  runApp(const EntroApp());
 }
 
-class TicketSyncApp extends StatelessWidget {
-  const TicketSyncApp({super.key});
+class EntroApp extends StatelessWidget {
+  const EntroApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ticket Sync',
+      title: 'Entro!',
       theme: ThemeData(
         // Use a more appealing color scheme
         colorScheme: ColorScheme.fromSeed(

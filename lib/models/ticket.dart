@@ -1,5 +1,4 @@
-// File: lib/models/ticket.dart
-
+// lib/models/ticket.dart
 import 'package:flutter/material.dart';
 
 class Ticket {
@@ -47,6 +46,22 @@ class Ticket {
     final horaStr = json['evento_horario'] as String? ?? '00:00';
     final dt = DateTime.tryParse('$dataStr $horaStr') ?? DateTime.now();
 
+    // Fix the logo URL to handle duplicated 'uploads' path
+    String logoPath = '';
+    if (json.containsKey('evento_logo') && json['evento_logo'] != null) {
+      logoPath = json['evento_logo'].toString();
+      
+      // Fix duplicate uploads folder in path
+      if (logoPath.contains('/uploads/uploads/')) {
+        logoPath = logoPath.replaceAll('/uploads/uploads/', '/uploads/');
+      }
+      
+      // If it doesn't start with http or https, add the base URL
+      if (logoPath.isNotEmpty && !logoPath.startsWith('http')) {
+        logoPath = 'https://ticketsync.com.br/uploads/$logoPath';
+      }
+    }
+
     return Ticket(
       id: json['id'] as int? ?? 0,
       orderId: json['order_id'] as String? ?? '',
@@ -63,10 +78,11 @@ class Ticket {
       eventoLocal: json['evento_local'] as String? ?? '',
       eventoData: dt,
       eventoHorario: TimeOfDay(hour: dt.hour, minute: dt.minute),
-      eventoLogo: json['evento_logo'] as String? ?? '',
+      eventoLogo: logoPath,
       tipoIngresso: json['tipo_ingresso'] as String?,
     );
   }
+
 
   /// Converte este objeto para JSON (útil para cache offline).
   Map<String, dynamic> toJson() {

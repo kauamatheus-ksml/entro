@@ -3,7 +3,7 @@
   <uses-permission android:name="android.permission.INTERNET"/>
 
   <application
-      android:label="ticket_sync_client"
+      android:label="Entro!"
       android:name="${applicationName}"
       android:icon="@mipmap/ic_launcher">  <!-- ic_launcher gerado pelo launcher_icons -->
     <activity

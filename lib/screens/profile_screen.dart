@@ -1,5 +1,9 @@
-// lib/screens/profile_screen.dart
+// lib/screens/profile_screen.dart - updated version
+
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
@@ -26,6 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _changePassword = false;
   String? _errorMessage;
   String? _profileImageUrl;
+  bool _uploadingImage = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -93,6 +99,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
+  
+  Future<void> _pickAndUploadImage() async {
+    try {
+      // Show image source selection dialog
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return SimpleDialog(
+            title: const Text('Selecionar foto de'),
+            children: <Widget>[
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, ImageSource.camera),
+                child: const ListTile(
+                  leading: Icon(Icons.camera_alt),
+                  title: Text('Câmera'),
+                ),
+              ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, ImageSource.gallery),
+                child: const ListTile(
+                  leading: Icon(Icons.photo_library),
+                  title: Text('Galeria'),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      
+      if (source == null) return;
+      
+      // Pick the image
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile == null) return;
+      
+      setState(() => _uploadingImage = true);
+      
+      try {
+        // Read file as bytes
+        final bytes = await pickedFile.readAsBytes();
+        
+        // Upload to server
+        final newImageUrl = await _api.uploadProfilePhoto(
+          bytes, 
+          pickedFile.name,
+        );
+        
+        setState(() {
+          _profileImageUrl = newImageUrl;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto de perfil atualizada com sucesso!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao enviar foto: ${e.toString()}')),
+        );
+      } finally {
+        setState(() => _uploadingImage = false);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao selecionar imagem: ${e.toString()}')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,23 +220,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Profile image
-              GestureDetector(
-                onTap: () {
-                  // Implementar upload de foto
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Funcionalidade de alteração de foto em desenvolvimento')),
-                  );
-                },
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                      ? NetworkImage(_profileImageUrl!)
-                      : null,
-                  child: _profileImageUrl == null || _profileImageUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                      : null,
-                ),
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  GestureDetector(
+                    onTap: _uploadingImage ? null : _pickAndUploadImage,
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                          ? NetworkImage(_profileImageUrl!)
+                          : null,
+                      child: _uploadingImage
+                          ? CircularProgressIndicator()
+                          : (_profileImageUrl == null || _profileImageUrl!.isEmpty
+                              ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                              : null),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.camera_alt, color: Colors.white),
+                      onPressed: _uploadingImage ? null : _pickAndUploadImage,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Text(

@@ -9,6 +9,7 @@ import '../models/ticket.dart';
 
 class ApiService {
   static const String _baseUrl = "https://ticketsync.com.br";
+  static const String _imageBaseUrl = "https://ticketsync.com.br/uploads/";
 
   /// Verifica se há conexão de rede (Android, iOS e Web)
   Future<bool> _hasConnection() async {
@@ -56,6 +57,17 @@ class ApiService {
     return prefs.getString("token");
   }
 
+  /// Formata a URL da imagem do evento
+  String getEventImageUrl(String logoPath) {
+    if (logoPath.startsWith('http')) {
+      return logoPath; // Já é uma URL completa
+    } else if (logoPath.isNotEmpty) {
+      return "$_imageBaseUrl$logoPath"; // Constrói URL completa
+    } else {
+      return ""; // Sem imagem
+    }
+  }
+
   /// Busca a lista de ingressos do usuário (com cache offline)
   Future<List<Ticket>> getTickets() async {
     final prefs = await SharedPreferences.getInstance();
@@ -75,8 +87,32 @@ class ApiService {
         List<Ticket> live;
         try {
           final decoded = jsonDecode(body);
+          
           live = (decoded['tickets'] as List)
-            .map((e) => Ticket.fromJson(e))
+            .map((e) {
+              // Use a local, fallback logo path if the server one fails
+              if (e.containsKey('evento_logo')) {
+                try {
+                  // Test the URL with a head request
+                  http.head(Uri.parse(e['evento_logo'])).timeout(
+                    Duration(seconds: 2),
+                    onTimeout: () {
+                      // If timeout, log and use local asset
+                      print('Image URL timed out: ${e['evento_logo']}');
+                      e['evento_logo'] = ''; // Will use fallback image
+                      return http.Response('', 408);
+                    },
+                  ).catchError((error) {
+                    // If error, log and use local asset
+                    print('Error checking image URL: $error');
+                    e['evento_logo'] = ''; // Will use fallback image
+                  });
+                } catch (e) {
+                  print('Exception checking image URL: $e');
+                }
+              }
+              return Ticket.fromJson(e);
+            })
             .where((t) => t.status.toLowerCase() == 'approved')
             .toList();
         } catch (e) {
@@ -132,7 +168,14 @@ class ApiService {
         throw Exception('Resposta vazia do servidor.');
       }
       try {
-        return jsonDecode(body) as Map<String, dynamic>;
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        
+        // Processamento adicional para a imagem do evento
+        if (data.containsKey('evento_logo') && data['evento_logo'] != null) {
+          data['evento_logo'] = getEventImageUrl(data['evento_logo']);
+        }
+        
+        return data;
       } catch (e) {
         throw Exception('Falha ao decodificar detalhes: ${e.toString()}');
       }
@@ -192,7 +235,14 @@ class ApiService {
         throw Exception('Resposta vazia do servidor.');
       }
       try {
-        return jsonDecode(body) as Map<String, dynamic>;
+        final userData = jsonDecode(body) as Map<String, dynamic>;
+        
+        // Se houver uma foto de perfil, formata a URL
+        if (userData.containsKey('foto') && userData['foto'] != null && userData['foto'].toString().isNotEmpty) {
+          userData['foto'] = getEventImageUrl(userData['foto']);
+        }
+        
+        return userData;
       } catch (e) {
         throw Exception('Falha ao decodificar perfil: ${e.toString()}');
       }

@@ -1,3 +1,4 @@
+// lib/widgets/ticket_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/ticket.dart';
@@ -12,7 +13,7 @@ class TicketCard extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
-  /// Mapea tipos para ícones
+  /// Mapeia tipos para ícones
   IconData _iconForType(String type) {
     switch (type.toLowerCase()) {
       case 'vip':
@@ -72,31 +73,45 @@ class TicketCard extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      // 1) Miniatura do evento com sobreposição de status
+                      // 1) Event image
                       Stack(
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: ticket.eventoLogo.isNotEmpty
-                                ? Image.network(
-                                    ticket.eventoLogo,
+                                ? FadeInImage.assetNetwork(
+                                    placeholder: 'assets/ticketsyhnklogo.png',
+                                    image: ticket.eventoLogo,
                                     width: 70,
-                                    height: 90,
+                                    height: 70,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 70,
-                                      height: 90,
-                                      color: Colors.grey.shade200,
-                                      child: const Icon(Icons.event, color: Colors.grey, size: 32),
-                                    ),
+                                    imageErrorBuilder: (context, error, stackTrace) {
+                                      print('Error loading image: $error');
+                                      return Container(
+                                        width: 100,
+                                        height: 100,
+                                        color: Colors.grey.shade200,
+                                        child: Image.asset(
+                                          'assets/ticketsyhnklogo.png',
+                                          width: 50, 
+                                          height: 50,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      );
+                                    },
                                   )
                                 : Container(
                                     width: 70,
                                     height: 90,
                                     color: Colors.grey.shade200,
-                                    child: const Icon(Icons.event, color: Colors.grey, size: 32),
+                                    child: Image.asset(
+                                      'assets/ticketsyhnklogo.png',
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.contain,
+                                    ),
                                   ),
-                            ),
+                          ),
                           
                           // Status overlay if past event
                           if (isPastEvent)
@@ -106,7 +121,7 @@ class TicketCard extends StatelessWidget {
                                   color: Colors.black.withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Center(
+                                child: const Center(
                                   child: Text(
                                     'PASSADO',
                                     style: TextStyle(

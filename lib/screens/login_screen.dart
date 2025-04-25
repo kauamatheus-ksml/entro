@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       
                       // Title
                       Text(
-                        'Ticket Sync',
+                        'Entro!',  // Changed from 'Ticket Sync'
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           color: colorScheme.primary,
                           fontWeight: FontWeight.bold,
