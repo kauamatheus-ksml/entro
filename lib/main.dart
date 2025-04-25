@@ -13,19 +13,21 @@ class EntroApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryBlue = const Color(0xFF012F6D);
+    
     return MaterialApp(
       title: 'Entro!',
       theme: ThemeData(
-        // Use a more appealing color scheme
+        // Cor principal do aplicativo
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1), // Deep blue as primary
-          primary: const Color(0xFF0D47A1),
+          seedColor: primaryBlue,
+          primary: primaryBlue,
           secondary: const Color(0xFF1976D2),
           tertiary: const Color(0xFFFF6F00),
           background: const Color(0xFFF5F5F7),
           surface: Colors.white,
         ),
-        // Enhanced text theme
+        // Tema de texto aprimorado
         textTheme: const TextTheme(
           headlineLarge: TextStyle(fontWeight: FontWeight.w700),
           headlineMedium: TextStyle(fontWeight: FontWeight.w600),
@@ -34,18 +36,25 @@ class EntroApp extends StatelessWidget {
           bodyLarge: TextStyle(fontSize: 16),
           bodyMedium: TextStyle(fontSize: 14),
         ),
-        // Card theme
+        // Tema de cartões
         cardTheme: CardTheme(
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           shadowColor: Colors.black.withOpacity(0.1),
         ),
-        // Button theme
+        // Tema de botões
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: primaryBlue,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
+        ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: primaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -56,7 +65,7 @@ class EntroApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF0D47A1), width: 2),
+            borderSide: BorderSide(color: primaryBlue, width: 2),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

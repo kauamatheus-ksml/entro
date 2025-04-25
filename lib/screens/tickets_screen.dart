@@ -1,8 +1,8 @@
+// lib/screens/tickets_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/ticket.dart';
 import '../services/api_service.dart';
-import '../widgets/ticket_card.dart';
 import 'ticket_details_screen.dart';
 import 'profile_screen.dart';
 
@@ -17,7 +17,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
   final ApiService _api = ApiService();
   late Future<List<Ticket>> _futureTickets;
   bool _showUpcoming = true; // Começa mostrando eventos próximos
-  bool _showDebug = false; // Toggle for debugging image URLs
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -34,131 +34,51 @@ class _TicketsScreenState extends State<TicketsScreen> {
   void _logout() {
     Navigator.of(context).pushReplacementNamed('/');
   }
-
-  // Debug widget to help diagnose image issues
-  Widget _debugImages(List<Ticket> tickets) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      color: Colors.amber.withOpacity(0.2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("DEBUG: Image URLs", style: TextStyle(fontWeight: FontWeight.bold)),
-              IconButton(
-                icon: Icon(Icons.close),
-                onPressed: () => setState(() => _showDebug = false),
-              ),
-            ],
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: tickets.length,
-              itemBuilder: (context, index) {
-                final ticket = tickets[index];
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Evento: ${ticket.eventoNome}"),
-                    Text("URL: ${ticket.eventoLogo}"),
-                    SizedBox(height: 6),
-                    ticket.eventoLogo.isNotEmpty 
-                        ? Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  ticket.eventoLogo,
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 50,
-                                      height: 50,
-                                      color: Colors.red.withOpacity(0.3),
-                                      child: Icon(Icons.error, color: Colors.red),
-                                    );
-                                  },
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(
-                                      width: 50,
-                                      height: 50,
-                                      color: Colors.grey.withOpacity(0.3),
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded / 
-                                                loadingProgress.expectedTotalBytes!
-                                              : null,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  "Status: Tentando carregar...",
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Text("No image URL provided", style: TextStyle(color: Colors.red)),
-                    Divider(),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+  
+  void _openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
+  }
+  
+  void _handleNavTap(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    
+    switch (index) {
+      case 0: // Tickets
+        // Já estamos na tela de tickets
+        break;
+      case 1: // Perfil
+        _openProfile();
+        break;
+      case 2: // Atualizar
+        _loadTickets();
+        break;
+      case 3: // Logout
+        _logout();
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final primaryBlue = const Color(0xFF012F6D);
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meus Ingressos'),
+        title: const Text(
+          'Meus Ingressos',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: primaryBlue,
         centerTitle: true,
-        actions: [
-          // Debug button
-          IconButton(
-            icon: Icon(Icons.bug_report),
-            tooltip: 'Debug Images',
-            onPressed: () => setState(() => _showDebug = !_showDebug),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: _loadTickets,
-          ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: 'Meu Perfil',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
-            onPressed: _logout,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -166,8 +86,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
           Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: Colors.grey.shade300),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -180,36 +108,24 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: _showUpcoming ? Colors.white : Colors.transparent,
+                        color: _showUpcoming ? primaryBlue : Colors.transparent,
                         borderRadius: BorderRadius.circular(50),
-                        boxShadow: _showUpcoming
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
                       ),
                       child: Text(
                         'Próximos',
                         style: TextStyle(
-                          color: _showUpcoming
-                              ? colorScheme.primary
-                              : Colors.grey.shade700,
-                          fontWeight: _showUpcoming
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                          color: _showUpcoming ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   ),
                 ),
-                // Anteriores button
+                // Passados button
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -218,29 +134,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: !_showUpcoming ? Colors.white : Colors.transparent,
+                        color: !_showUpcoming ? primaryBlue : Colors.transparent,
                         borderRadius: BorderRadius.circular(50),
-                        boxShadow: !_showUpcoming
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
                       ),
                       child: Text(
-                        'Anteriores',
+                        'Passados',
                         style: TextStyle(
-                          color: !_showUpcoming
-                              ? colorScheme.primary
-                              : Colors.grey.shade700,
-                          fontWeight: !_showUpcoming
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                          color: !_showUpcoming ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -266,11 +170,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 final allTickets = snap.data!;
                 if (allTickets.isEmpty) {
                   return const Center(child: Text('Nenhum ingresso encontrado.'));
-                }
-
-                // Show debug view if enabled
-                if (_showDebug) {
-                  return _debugImages(allTickets);
                 }
 
                 // Nova lógica: 
@@ -315,58 +214,245 @@ class _TicketsScreenState extends State<TicketsScreen> {
                   grouped.putIfAbsent(key, () => []).add(t);
                 }
 
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    _loadTickets();
-                    // wait a moment so spinner shows
-                    await Future.delayed(const Duration(milliseconds: 500));
-                  },
-                  child: ListView(
-                    children: grouped.entries.map((entry) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: Text(
-                              entry.key[0].toUpperCase() + entry.key.substring(1),
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 80), // Espaço para a bottom navigation bar
+                  itemCount: grouped.entries.length,
+                  itemBuilder: (context, indexGroup) {
+                    final entry = grouped.entries.elementAt(indexGroup);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            entry.key[0].toUpperCase() + entry.key.substring(1),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          for (var ticket in entry.value)
-                            TicketCard(
-                              ticket: ticket,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => TicketDetailsScreen(
-                                      orderId: ticket.orderId,
-                                      ticketCode: ticket.ticketCode,
-                                    ),
-                                  ),
-                                ).then((_) {
-                                  // Reload tickets when returning from details
-                                  // This ensures validation status is updated
-                                  _loadTickets();
-                                });
-                              },
-                            ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+                        ),
+                        for (var ticket in entry.value)
+                          _buildTicketItem(context, ticket, !_showUpcoming, primaryBlue),
+                      ],
+                    );
+                  },
                 );
               },
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: primaryBlue,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
+        type: BottomNavigationBarType.fixed,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        currentIndex: _currentIndex,
+        onTap: _handleNavTap,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.confirmation_number),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.refresh),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout),
+            label: '',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTicketItem(BuildContext context, Ticket ticket, bool isPast, Color primaryColor) {
+    final dateFormatter = DateFormat('EEEE, dd/MM/yyyy', 'pt_BR');
+    String formattedDate = dateFormatter.format(ticket.eventoData);
+    formattedDate = formattedDate[0].toUpperCase() + formattedDate.substring(1);
+    
+    // Formatação da hora no formato 24h
+    final timeStr = '${ticket.eventoHorario.hour.toString().padLeft(2, '0')}:${ticket.eventoHorario.minute.toString().padLeft(2, '0')}';
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TicketDetailsScreen(
+                orderId: ticket.orderId,
+                ticketCode: ticket.ticketCode,
+              ),
+            ),
+          ).then((_) {
+            // Reload tickets when returning from details
+            _loadTickets();
+          });
+        },
+        child: Row(
+          children: [
+            // Lado esquerdo - Logo do evento
+            Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                color: isPast ? Colors.grey.shade600 : primaryColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+              ),
+              child: ticket.eventoLogo.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomLeft: Radius.circular(12),
+                      ),
+                      child: FadeInImage.assetNetwork(
+                        placeholder: 'assets/ticketsyhnklogo.png',
+                        image: ticket.eventoLogo,
+                        fit: BoxFit.cover,
+                        width: 110,
+                        height: 110,
+                        imageErrorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Image.asset(
+                              'assets/ticketsyhnklogo.png',
+                              width: 80,
+                              height: 80,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Center(
+                      child: Image.asset(
+                        'assets/ticketsyhnklogo.png',
+                        width: 80,
+                        height: 80,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+            
+            // Lado direito - Detalhes do evento
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.eventoNome,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Local com ícone
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: primaryColor, size: 18),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            ticket.eventoLocal,
+                            style: const TextStyle(fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // Data com ícone
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: primaryColor, size: 18),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            formattedDate,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // Hora e quantidade de ingressos
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, color: primaryColor, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          timeStr,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.confirmation_number, color: primaryColor, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${ticket.quantidadeTotal} Ingresso${ticket.quantidadeTotal > 1 ? 's' : ''}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // Número do ingresso e seta
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '#${ticket.orderId}',
+                          style: TextStyle(
+                            fontSize: 14, 
+                            color: primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_ios, color: primaryColor, size: 14),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

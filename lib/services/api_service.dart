@@ -301,7 +301,7 @@ class ApiService {
     throw Exception(err);
   }
   
-  /// Upload de foto de perfil
+  /// Upload de foto de perfil - Método corrigido
   Future<String> uploadProfilePhoto(List<int> photoBytes, String fileName) async {
     if (!await _hasConnection()) {
       throw Exception('Sem conexão com a Internet.');
@@ -316,9 +316,15 @@ class ApiService {
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = token;
     
-    // Adicionar o arquivo
+    // Verifica a extensão do arquivo para garantir que é uma imagem
+    final fileExt = fileName.split('.').last.toLowerCase();
+    if (fileExt != 'jpg' && fileExt != 'jpeg' && fileExt != 'png') {
+      throw Exception('Formato de imagem não suportado. Use JPG ou PNG.');
+    }
+    
+    // Adicionar o arquivo com o nome do campo 'foto' para corresponder à tabela
     request.files.add(http.MultipartFile.fromBytes(
-      'photo',
+      'foto',  // Nome correto do campo que corresponde à coluna na tabela
       photoBytes,
       filename: fileName
     ));
@@ -329,9 +335,19 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
       
       if (response.statusCode == 200) {
-        // Retorna a URL da foto upload
-        final decoded = jsonDecode(response.body);
-        return decoded['photo_url'] as String;
+        final responseData = jsonDecode(response.body);
+        
+        // O servidor pode retornar diferentes chaves para o URL da imagem
+        if (responseData.containsKey('foto_url')) {
+          return responseData['foto_url'];
+        } else if (responseData.containsKey('foto')) {
+          return responseData['foto'];
+        } else if (responseData.containsKey('photo_url')) {
+          return responseData['photo_url'];
+        } else {
+          // Se o servidor não retornar o URL, retornamos uma mensagem de erro
+          throw Exception('URL da foto não retornada pelo servidor');
+        }
       }
       
       if (response.statusCode >= 500) {
